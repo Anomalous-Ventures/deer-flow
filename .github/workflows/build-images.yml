@@ -78,18 +78,25 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
-          context: ${{ matrix.context }}
+          # Repo root as build context — Dockerfiles `COPY backend ./backend`
+          # and `COPY frontend ./frontend` expect repo-root layout, not the
+          # service subdir. Original `context: ${{ matrix.context }}` broke
+          # frontend with: failed to compute cache key: "/frontend": not found.
+          context: .
           file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
+          # Push to anomalous-ventures (local Harbor project) — `ghcr` is a
+          # proxy project and rejects pushes (denied: can not push artifact
+          # to a proxy project: ghcr).
           tags: |
-            ${{ secrets.HARBOR_REGISTRY }}/ghcr/anomalous-ventures/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}
-            ${{ secrets.HARBOR_REGISTRY }}/ghcr/anomalous-ventures/deer-flow-${{ matrix.service }}:latest
-          cache-from: type=registry,ref=${{ secrets.HARBOR_REGISTRY }}/ghcr/anomalous-ventures/deer-flow-${{ matrix.service }}:buildcache
-          cache-to: type=registry,ref=${{ secrets.HARBOR_REGISTRY }}/ghcr/anomalous-ventures/deer-flow-${{ matrix.service }}:buildcache,mode=max
+            ${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}
+            ${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:latest
+          cache-from: type=registry,ref=${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:buildcache,mode=max
 
       - name: Summary
         run: |
           echo "### Built deer-flow-${{ matrix.service }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Tag: \`${{ steps.tag.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Image: \`${{ secrets.HARBOR_REGISTRY }}/ghcr/anomalous-ventures/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image: \`${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"

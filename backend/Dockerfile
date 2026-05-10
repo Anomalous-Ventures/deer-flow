@@ -12,6 +12,7 @@ ARG BASE_REGISTRY=mirror.gcr.io
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.7.20
 ARG DOCKER_CLI_IMAGE=${BASE_REGISTRY}/library/docker:cli
 FROM ${UV_IMAGE} AS uv-source
+FROM ${DOCKER_CLI_IMAGE} AS docker-cli-src
 
 # ── Stage 1: Builder ──────────────────────────────────────────────────────────
 FROM ${BASE_REGISTRY}/library/python:3.12-slim-bookworm AS builder
@@ -66,8 +67,6 @@ ENV PYTHONIOENCODING=utf-8
 # Retains compiler toolchain from builder so startup-time `uv sync` can build
 # source distributions in development containers.
 FROM builder AS dev
-
-FROM ${DOCKER_CLI_IMAGE} AS docker-cli-src
 
 # Install Docker CLI (for DooD: allows starting sandbox containers via host Docker socket)
 COPY --from=docker-cli-src /usr/local/bin/docker /usr/local/bin/docker
