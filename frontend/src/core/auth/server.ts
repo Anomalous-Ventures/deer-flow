@@ -36,7 +36,8 @@ function parseSetCookie(
     else if (key === "secure") options.secure = true;
     else if (key === "samesite" && v) {
       const sv = v.toLowerCase();
-      if (sv === "lax" || sv === "strict" || sv === "none") options.sameSite = sv;
+      if (sv === "lax" || sv === "strict" || sv === "none")
+        options.sameSite = sv;
     } else if (key === "path" && v) options.path = v;
     else if (key === "max-age" && v) options.maxAge = Number(v);
     else if (key === "expires" && v) options.expires = new Date(v);
