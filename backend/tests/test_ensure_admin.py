@@ -118,12 +118,14 @@ def test_bootstrap_env_creates_admin_on_first_boot(monkeypatch):
     monkeypatch.setenv("DEER_FLOW_BOOTSTRAP_ADMIN_PASSWORD", "deterministic-test-pw")
 
     provider = _make_provider(admin_count=0)
+    sf = _make_session_factory()
     app = _make_app_stub()
 
     with patch("app.gateway.deps.get_local_provider", return_value=provider):
-        from app.gateway.app import _ensure_admin_user
+        with patch("deerflow.persistence.engine.get_session_factory", return_value=sf):
+            from app.gateway.app import _ensure_admin_user
 
-        asyncio.run(_ensure_admin_user(app))
+            asyncio.run(_ensure_admin_user(app))
 
     provider.create_user.assert_called_once()
     kwargs = provider.create_user.call_args.kwargs
@@ -139,12 +141,14 @@ def test_bootstrap_env_random_password_when_unset(monkeypatch):
     monkeypatch.delenv("DEER_FLOW_BOOTSTRAP_ADMIN_PASSWORD", raising=False)
 
     provider = _make_provider(admin_count=0)
+    sf = _make_session_factory()
     app = _make_app_stub()
 
     with patch("app.gateway.deps.get_local_provider", return_value=provider):
-        from app.gateway.app import _ensure_admin_user
+        with patch("deerflow.persistence.engine.get_session_factory", return_value=sf):
+            from app.gateway.app import _ensure_admin_user
 
-        asyncio.run(_ensure_admin_user(app))
+            asyncio.run(_ensure_admin_user(app))
 
     provider.create_user.assert_called_once()
     pw = provider.create_user.call_args.kwargs["password"]
@@ -155,12 +159,14 @@ def test_bootstrap_env_whitespace_email_falls_through(monkeypatch):
     """Whitespace-only DEER_FLOW_BOOTSTRAP_ADMIN_EMAIL → treat as unset."""
     monkeypatch.setenv("DEER_FLOW_BOOTSTRAP_ADMIN_EMAIL", "   ")
     provider = _make_provider(admin_count=0)
+    sf = _make_session_factory()
     app = _make_app_stub()
 
     with patch("app.gateway.deps.get_local_provider", return_value=provider):
-        from app.gateway.app import _ensure_admin_user
+        with patch("deerflow.persistence.engine.get_session_factory", return_value=sf):
+            from app.gateway.app import _ensure_admin_user
 
-        asyncio.run(_ensure_admin_user(app))
+            asyncio.run(_ensure_admin_user(app))
 
     provider.create_user.assert_not_called()
 
@@ -171,13 +177,15 @@ def test_bootstrap_env_create_failure_is_non_fatal(monkeypatch):
 
     provider = _make_provider(admin_count=0)
     provider.create_user = AsyncMock(side_effect=RuntimeError("dup email"))
+    sf = _make_session_factory()
     app = _make_app_stub()
 
     with patch("app.gateway.deps.get_local_provider", return_value=provider):
-        from app.gateway.app import _ensure_admin_user
+        with patch("deerflow.persistence.engine.get_session_factory", return_value=sf):
+            from app.gateway.app import _ensure_admin_user
 
-        # Must not raise
-        asyncio.run(_ensure_admin_user(app))
+            # Must not raise
+            asyncio.run(_ensure_admin_user(app))
 
     provider.create_user.assert_called_once()
 

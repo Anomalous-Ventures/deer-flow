@@ -104,9 +104,7 @@ async def _ensure_admin_user(app: FastAPI) -> None:
     if admin_count == 0:
         bootstrap_email = os.environ.get("DEER_FLOW_BOOTSTRAP_ADMIN_EMAIL", "").strip()
         if bootstrap_email:
-            password = os.environ.get(
-                "DEER_FLOW_BOOTSTRAP_ADMIN_PASSWORD"
-            ) or secrets.token_urlsafe(32)
+            password = os.environ.get("DEER_FLOW_BOOTSTRAP_ADMIN_PASSWORD") or secrets.token_urlsafe(32)
             try:
                 await provider.create_user(
                     email=bootstrap_email,
@@ -115,8 +113,7 @@ async def _ensure_admin_user(app: FastAPI) -> None:
                     needs_setup=False,
                 )
                 logger.info(
-                    "Bootstrapped admin account %s from "
-                    "DEER_FLOW_BOOTSTRAP_ADMIN_EMAIL",
+                    "Bootstrapped admin account %s from DEER_FLOW_BOOTSTRAP_ADMIN_EMAIL",
                     bootstrap_email,
                 )
             except Exception:
