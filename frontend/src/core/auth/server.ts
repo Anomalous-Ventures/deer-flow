@@ -124,9 +124,7 @@ export async function getServerSideUser(): Promise<AuthResult> {
             userParsed.error,
           );
         } else {
-          console.error(
-            `[SSR auth] trust /auth/me responded ${ssoRes.status}`,
-          );
+          console.error(`[SSR auth] trust /auth/me responded ${ssoRes.status}`);
         }
       } catch (err) {
         clearTimeout(ssoTimeout);

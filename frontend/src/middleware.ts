@@ -22,9 +22,8 @@ export async function middleware(req: NextRequest) {
   const auUser = req.headers.get("x-authentik-username");
   if (!auEmail || !auUser) return NextResponse.next();
 
-  const internalUrl = process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL
-    ?.trim()
-    .replace(/\/+$/, "");
+  const internalUrl =
+    process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL?.trim().replace(/\/+$/, "");
   if (!internalUrl) return NextResponse.next();
 
   const controller = new AbortController();
@@ -61,7 +60,10 @@ export async function middleware(req: NextRequest) {
   if (parsed) {
     const existing = fwdHeaders.get("cookie");
     const cookieLine = `${parsed.name}=${parsed.value}`;
-    fwdHeaders.set("cookie", existing ? `${existing}; ${cookieLine}` : cookieLine);
+    fwdHeaders.set(
+      "cookie",
+      existing ? `${existing}; ${cookieLine}` : cookieLine,
+    );
   }
   const res = NextResponse.next({ request: { headers: fwdHeaders } });
   if (parsed) {
@@ -100,7 +102,8 @@ function parseAccessToken(
     else if (key === "secure") options.secure = true;
     else if (key === "samesite" && v) {
       const sv = v.toLowerCase();
-      if (sv === "lax" || sv === "strict" || sv === "none") options.sameSite = sv;
+      if (sv === "lax" || sv === "strict" || sv === "none")
+        options.sameSite = sv;
     } else if (key === "path" && v) options.path = v;
     else if (key === "max-age" && v) options.maxAge = Number(v);
     else if (key === "expires" && v) options.expires = new Date(v);
@@ -109,7 +112,5 @@ function parseAccessToken(
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/health|.*\\..*).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health|.*\\..*).*)"],
 };
