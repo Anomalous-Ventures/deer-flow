@@ -11,7 +11,8 @@ The upstream README documents what DeerFlow is and how to run it locally. This f
 | File | Purpose | Why we added it |
 |------|---------|-----------------|
 | `.github/workflows/build-images.yml` | Matrix build of `gateway` / `frontend` / `provisioner` images, pushed to `harbor.spooty.io` via the AV ARC pool. | Upstream's `container.yaml` only builds the all-in-one sandbox image; the agent components themselves are expected to run from `pip install`. We need pinned multi-arch images for K8s. |
-| `.github/workflows/upstream-sync.yml` | Weekly cron + manual dispatch that fetches `bytedance/deer-flow:main`, cherry-picks AV-only commits on top, and opens a PR. | Keeps the fork rebaseable without manual `git fetch upstream` work. |
+| `.github/workflows/upstream-sync.yml` | Daily cron (07:00 UTC) + manual dispatch that fetches `bytedance/deer-flow:main`, cherry-picks AV-only commits on top, and opens a PR. | Keeps the fork rebaseable without manual `git fetch upstream` work. |
+| `.github/workflows/auto-bump-stax.yml` | Fires on successful `build-images` run; clones stax and opens a PR updating the 3 image SHAs in `pulumi/stacks/27-deer-flow/Pulumi.stage.yaml`. Requires `STAX_DEPLOY_TOKEN` repo secret (PAT with `repo` scope on stax). | Closes the loop from code merge -> image build -> Pulumi config update. Without this, image SHAs in stax drift behind what's built. |
 | `AV-NOTES.md` | This file. | Make the overlay self-documenting; new contributors don't have to grep workflows to understand the delta. |
 
 Anything else (source tree, configs, upstream workflows like `e2e-tests.yml` / `lint-check.yml`) is unmodified from upstream and follows the upstream contributor guide.
@@ -25,7 +26,7 @@ Anything else (source tree, configs, upstream workflows like `e2e-tests.yml` / `
 
 ## Upstream rebase policy
 
-The `upstream-sync.yml` workflow runs every Monday 07:00 UTC and on manual dispatch. It opens a PR titled `chore: upstream sync YYYYMMDD` if the fork is behind. Review pattern:
+The `upstream-sync.yml` workflow runs daily at 07:00 UTC and on manual dispatch. It opens a PR titled `chore: upstream sync YYYYMMDD` if the fork is behind. Review pattern:
 
 1. Check the PR's diff for any breaking changes in components STAX depends on (gateway HTTP API, provisioner contract, frontend `data-testid` selectors used by Sentinel).
 2. If selectors change, update `Anomalous-Ventures/sentinel/plans/deer-flow.yaml` in the **same** merge.
