@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.gateway.auth_middleware import AuthMiddleware
 from app.gateway.authentik_trust_middleware import AuthentikTrustMiddleware
 from app.gateway.config import get_gateway_config
-from app.gateway.csrf_middleware import CSRFMiddleware
+from app.gateway.csrf_middleware import CSRFMiddleware, get_configured_cors_origins
 from app.gateway.deps import langgraph_runtime
 from app.gateway.routers import (
     agents,
@@ -347,23 +347,15 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
     # CORS: when GATEWAY_CORS_ORIGINS is set (dev without nginx), add CORS middleware.
     # In production, nginx handles CORS and no middleware is needed.
-    cors_origins_env = os.environ.get("GATEWAY_CORS_ORIGINS", "")
-    if cors_origins_env:
-        cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
-        # Validate: wildcard origin with credentials is a security misconfiguration
-        for origin in cors_origins:
-            if origin == "*":
-                logger.error("GATEWAY_CORS_ORIGINS contains wildcard '*' with allow_credentials=True. This is a security misconfiguration — browsers will reject the response. Use explicit scheme://host:port origins instead.")
-                cors_origins = [o for o in cors_origins if o != "*"]
-                break
-        if cors_origins:
-            app.add_middleware(
-                CORSMiddleware,
-                allow_origins=cors_origins,
-                allow_credentials=True,
-                allow_methods=["*"],
-                allow_headers=["*"],
-            )
+    cors_origins = sorted(get_configured_cors_origins())
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     # Include routers
     # Models API is mounted at /api/models
