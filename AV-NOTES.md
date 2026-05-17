@@ -26,7 +26,7 @@ Anything else (source tree, configs, upstream workflows like `e2e-tests.yml` / `
 
 ## Upstream rebase policy
 
-The `upstream-sync.yml` workflow runs every Monday 07:00 UTC and on manual dispatch. It opens a PR titled `chore: upstream sync YYYYMMDD` if the fork is behind. Review pattern:
+The `upstream-sync.yml` workflow runs daily at 07:00 UTC and on manual dispatch. It opens a PR titled `chore: upstream sync YYYYMMDD` if the fork is behind. Review pattern:
 
 1. Check the PR's diff for any breaking changes in components STAX depends on (gateway HTTP API, provisioner contract, frontend `data-testid` selectors used by Sentinel).
 2. If selectors change, update `Anomalous-Ventures/sentinel/plans/deer-flow.yaml` in the **same** merge.
