@@ -2,12 +2,11 @@ name: Upstream rebase (bytedance/deer-flow)
 
 on:
   schedule:
-    - cron: "0 7 * * 1"  # Mondays 07:00 UTC
+    - cron: "0 7 * * *"  # Daily 07:00 UTC
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   sync:
@@ -18,7 +17,10 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # PAT required: org sets default_workflow_permissions=read; GITHUB_TOKEN
+          # cannot push branches or create PRs. Provision SYNC_TOKEN as a repo
+          # secret (PAT with repo scope on Anomalous-Ventures/deer-flow).
+          token: ${{ secrets.SYNC_TOKEN }}
 
       - name: Configure git
         run: |
@@ -72,10 +74,10 @@ jobs:
       - name: Open pull request
         if: steps.drift.outputs.behind != '0'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
           BRANCH="${{ steps.branch.outputs.branch }}"
-          BODY="Automated weekly upstream rebase.
+          BODY="Automated daily upstream rebase.
 
           Behind upstream/main: ${{ steps.drift.outputs.behind }} commits
           Ahead (AV-only): ${{ steps.drift.outputs.ahead }} commits
@@ -85,7 +87,7 @@ jobs:
 
           if gh pr list --head "$BRANCH" --json number --jq 'length' | grep -q '^0$'; then
             gh pr create \
-              --title "chore(upstream): weekly rebase $(date -u +%Y-%m-%d)" \
+              --title "chore(upstream): daily rebase $(date -u +%Y-%m-%d)" \
               --body "$BODY" \
               --head "$BRANCH" \
               --base main

@@ -1,0 +1,83 @@
+name: Auto-bump stax image pins
+
+on:
+  workflow_run:
+    workflows: ["Build images (gateway + frontend + provisioner)"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    name: Update deer-flow image SHAs in stax
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip if no deploy token
+        if: secrets.STAX_DEPLOY_TOKEN == ''
+        run: |
+          echo "STAX_DEPLOY_TOKEN not configured -- skipping auto-bump."
+          echo "Provision a PAT with repo scope on Anomalous-Ventures/stax."
+          exit 0
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT="sha-$(echo $SHA | cut -c1-7)"
+          echo "short=$SHORT" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $SHORT"
+
+      - name: Clone stax
+        env:
+          GH_TOKEN: ${{ secrets.STAX_DEPLOY_TOKEN }}
+        run: |
+          git clone --depth=1 \
+            "https://x-access-token:${GH_TOKEN}@github.com/Anomalous-Ventures/stax.git" \
+            stax
+
+      - name: Update Pulumi.stage.yaml
+        working-directory: stax
+        run: |
+          CONFIG="pulumi/stacks/27-deer-flow/Pulumi.stage.yaml"
+          TAG="${{ steps.tag.outputs.short }}"
+          REGISTRY="harbor.spooty.io/anomalous-ventures"
+
+          sed -i "s|stax-deer-flow:gateway_image:.*|stax-deer-flow:gateway_image: ${REGISTRY}/deer-flow-gateway:${TAG}|" "$CONFIG"
+          sed -i "s|stax-deer-flow:frontend_image:.*|stax-deer-flow:frontend_image: ${REGISTRY}/deer-flow-frontend:${TAG}|" "$CONFIG"
+          sed -i "s|stax-deer-flow:provisioner_image:.*|stax-deer-flow:provisioner_image: ${REGISTRY}/deer-flow-provisioner:${TAG}|" "$CONFIG"
+
+          echo "Updated $CONFIG to tag $TAG"
+          git diff
+
+      - name: Create PR
+        working-directory: stax
+        env:
+          GH_TOKEN: ${{ secrets.STAX_DEPLOY_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.short }}"
+          BRANCH="chore/deer-flow-image-bump-${TAG}"
+
+          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git checkout -b "$BRANCH"
+          git add pulumi/stacks/27-deer-flow/Pulumi.stage.yaml
+          git commit -m "chore(deer-flow): bump images to ${TAG}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --repo Anomalous-Ventures/stax \
+            --title "chore(deer-flow): bump images to ${TAG}" \
+            --body "Automated image pin update from deer-flow build.
+
+          Source commit: ${{ github.event.workflow_run.head_sha }}
+          Build run: ${{ github.event.workflow_run.html_url }}
+
+          After merge, deploy with:
+          \`\`\`
+          cd pulumi/stacks/27-deer-flow && pulumi up
+          \`\`\`" \
+            --head "$BRANCH" \
+            --base main
