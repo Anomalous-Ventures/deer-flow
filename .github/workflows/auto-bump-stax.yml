@@ -15,13 +15,6 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Skip if no deploy token
-        if: secrets.STAX_DEPLOY_TOKEN == ''
-        run: |
-          echo "STAX_DEPLOY_TOKEN not configured -- skipping auto-bump."
-          echo "Provision a PAT with repo scope on Anomalous-Ventures/stax."
-          exit 0
-
       - name: Compute image tag
         id: tag
         run: |
