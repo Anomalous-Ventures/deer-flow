@@ -415,6 +415,15 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
         """
         return {"status": "healthy", "service": "deer-flow-gateway"}
 
+    @app.get("/api/health", tags=["health"])
+    async def api_health_check() -> dict:
+        """Sentinel-compatible health check endpoint.
+
+        Returns:
+            Minimal status payload expected by sentinel smoke tests.
+        """
+        return {"status": "ok"}
+
     return app
 
 
