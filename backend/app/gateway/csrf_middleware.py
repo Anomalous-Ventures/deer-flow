@@ -204,9 +204,11 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
-        # For auth endpoints that set up session, also set CSRF cookie
-        if _is_auth and request.method == "POST":
-            # Generate a new CSRF token for the session
+        # Seed CSRF cookie on every response where the browser doesn't have one
+        # yet. This covers Authentik forward-auth flows where built-in auth
+        # endpoints are never called and the cookie would otherwise never appear.
+        existing_cookie = request.cookies.get(CSRF_COOKIE_NAME)
+        if not existing_cookie:
             csrf_token = generate_csrf_token()
             is_https = is_secure_request(request)
             response.set_cookie(
