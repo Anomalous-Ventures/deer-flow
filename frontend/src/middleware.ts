@@ -16,7 +16,12 @@ import { type NextRequest, NextResponse } from "next/server";
 const SSO_TIMEOUT_MS = 5_000;
 
 export async function middleware(req: NextRequest) {
-  if (req.cookies.has("access_token")) return NextResponse.next();
+  if (req.cookies.has("access_token")) {
+    if (req.nextUrl.pathname === "/") {
+      return NextResponse.redirect(new URL("/workspace", req.url));
+    }
+    return NextResponse.next();
+  }
 
   const auEmail = req.headers.get("x-authentik-email");
   const auUser = req.headers.get("x-authentik-username");
@@ -65,6 +70,16 @@ export async function middleware(req: NextRequest) {
       existing ? `${existing}; ${cookieLine}` : cookieLine,
     );
   }
+  if (req.nextUrl.pathname === "/") {
+    const res = NextResponse.redirect(new URL("/workspace", req.url));
+    if (parsed) {
+      res.cookies.set(parsed.name, parsed.value, parsed.options);
+    } else {
+      res.headers.append("set-cookie", setCookie);
+    }
+    return res;
+  }
+
   const res = NextResponse.next({ request: { headers: fwdHeaders } });
   if (parsed) {
     res.cookies.set(parsed.name, parsed.value, parsed.options);
