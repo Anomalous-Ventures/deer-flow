@@ -49,8 +49,9 @@ COPY --from=uv-source /uv /uvx /usr/local/bin/
 # Set working directory
 WORKDIR /app
 
-# Copy backend source code
+# Copy backend source code and skills
 COPY backend ./backend
+COPY skills ./skills
 
 # Install dependencies with cache mount
 # When UV_EXTRAS is set (e.g. "postgres"), installs optional dependencies.
@@ -100,6 +101,7 @@ WORKDIR /app
 
 # Copy backend with pre-built virtualenv from builder
 COPY --from=builder /app/backend ./backend
+COPY --from=builder /app/skills ./skills
 
 # Expose ports (gateway: 8001, langgraph: 2024)
 EXPOSE 8001 2024
