@@ -6,7 +6,9 @@ on:
     paths:
       - backend/**
       - frontend/**
+      - skills/**
       - docker/provisioner/**
+      - .dockerignore
       - .github/workflows/build-images.yml
   workflow_dispatch:
     inputs:
