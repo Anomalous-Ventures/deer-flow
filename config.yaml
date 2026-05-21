@@ -1,0 +1,342 @@
+# DeerFlow runtime configuration
+# Cluster Ollama endpoints for stax K8s deployment
+# See config.example.yaml for full schema reference
+
+config_version: 9
+
+log_level: info
+
+token_usage:
+  enabled: true
+
+# ============================================================================
+# Models
+# ============================================================================
+
+models:
+  # Lead agent -- reasoning model on spark02 (ARM64 88Gi)
+  - name: lead-reasoning
+    display_name: Qwen3 32B (Reasoning)
+    use: langchain_ollama:ChatOllama
+    model: qwen3:32b
+    base_url: http://ollama-spark02.llm.svc.cluster.local:11434
+    num_predict: 8192
+    temperature: 0.7
+    reasoning: true
+    supports_thinking: true
+    supports_vision: false
+
+  # Vision model on gpu02 (x86 A100)
+  - name: vision
+    display_name: Gemma 4 27B (Vision)
+    use: langchain_ollama:ChatOllama
+    model: gemma4:27b
+    base_url: http://ollama-gpu02.llm.svc.cluster.local:11434
+    num_predict: 8192
+    temperature: 0.7
+    reasoning: true
+    supports_thinking: true
+    supports_vision: true
+
+  # Fast utility model on spark (ARM64 32Gi)
+  - name: utility-fast
+    display_name: Llama 3.2 (Fast)
+    use: langchain_ollama:ChatOllama
+    model: llama3.2:latest
+    base_url: http://ollama-spark.llm.svc.cluster.local:11434
+    num_predict: 4096
+    temperature: 0.3
+    supports_thinking: false
+    supports_vision: false
+
+  # Thinking model on gpu01 (x86 A100)
+  - name: thinking
+    display_name: Qwen3 30B-A3B (Thinking)
+    use: langchain_ollama:ChatOllama
+    model: qwen3:30b-a3b
+    base_url: http://ollama-gpu01.llm.svc.cluster.local:11434
+    num_predict: 8192
+    temperature: 0.7
+    reasoning: true
+    supports_thinking: true
+    supports_vision: false
+
+# Default model -- first in list is implicit default; set via lead_model when schema supports it
+
+# ============================================================================
+# Tool Groups
+# ============================================================================
+
+tool_groups:
+  - name: web
+  - name: file:read
+  - name: file:write
+  - name: bash
+
+# ============================================================================
+# Tools
+# ============================================================================
+
+tools:
+  - name: web_search
+    group: web
+    use: deerflow.community.ddg_search.tools:web_search_tool
+    max_results: 5
+
+  - name: web_fetch
+    group: web
+    use: deerflow.community.jina_ai.tools:web_fetch_tool
+    timeout: 10
+
+  - name: image_search
+    group: web
+    use: deerflow.community.image_search.tools:image_search_tool
+    max_results: 5
+
+  - name: ls
+    group: file:read
+    use: deerflow.sandbox.tools:ls_tool
+
+  - name: read_file
+    group: file:read
+    use: deerflow.sandbox.tools:read_file_tool
+
+  - name: glob
+    group: file:read
+    use: deerflow.sandbox.tools:glob_tool
+    max_results: 200
+
+  - name: grep
+    group: file:read
+    use: deerflow.sandbox.tools:grep_tool
+    max_results: 100
+
+  - name: write_file
+    group: file:write
+    use: deerflow.sandbox.tools:write_file_tool
+
+  - name: str_replace
+    group: file:write
+    use: deerflow.sandbox.tools:str_replace_tool
+
+  - name: bash
+    group: bash
+    use: deerflow.sandbox.tools:bash_tool
+
+# ============================================================================
+# Loop Detection
+# ============================================================================
+
+loop_detection:
+  enabled: true
+  warn_threshold: 3
+  hard_limit: 5
+  window_size: 20
+  max_tracked_threads: 100
+  tool_freq_warn: 30
+  tool_freq_hard_limit: 50
+  tool_freq_overrides:
+    bash:
+      warn: 150
+      hard_limit: 300
+
+# ============================================================================
+# Uploads
+# ============================================================================
+
+uploads:
+  max_files: 10
+  max_file_size: 52428800    # 50 MiB
+  max_total_size: 104857600  # 100 MiB
+  auto_convert_documents: false
+  pdf_converter: auto
+
+# ============================================================================
+# Sandbox (local, host bash disabled by default)
+# ============================================================================
+
+sandbox:
+  use: deerflow.sandbox.local:LocalSandboxProvider
+  allow_host_bash: false
+  bash_output_max_chars: 20000
+  read_file_output_max_chars: 50000
+  ls_output_max_chars: 20000
+
+# ============================================================================
+# Subagents
+# ============================================================================
+
+subagents:
+  timeout_seconds: 900
+
+  agents:
+    general-purpose:
+      timeout_seconds: 1800
+      max_turns: 160
+    bash:
+      timeout_seconds: 300
+      max_turns: 80
+
+  custom_agents:
+    code-reviewer:
+      description: "Reviews pull requests for correctness, security, performance, and style"
+      system_prompt: |
+        You are a senior code reviewer. Analyze diffs for:
+        - Correctness and edge cases
+        - Security vulnerabilities (OWASP top 10)
+        - Performance regressions
+        - Style consistency with the codebase
+        Report findings as actionable review comments.
+      tools:
+        - bash
+        - read_file
+        - write_file
+        - grep
+      skills:
+        - code-review
+      max_turns: 80
+      timeout_seconds: 600
+
+    infra-validator:
+      description: "Validates infrastructure changes via Pulumi preview and Sentinel plans"
+      system_prompt: |
+        You are an infrastructure validation specialist. For any infra change:
+        - Run pulumi preview to check planned changes
+        - Verify no destructive operations without explicit approval
+        - Run relevant Sentinel test plans post-deploy
+        - Check network policies and RBAC implications
+      tools:
+        - bash
+        - read_file
+      skills:
+        - stax-context
+        - deploy-validate
+      max_turns: 60
+      timeout_seconds: 900
+
+    ci-debugger:
+      description: "Analyzes CI failures, proposes fixes, and validates corrections"
+      system_prompt: |
+        You are a CI/CD debugging specialist. When given a failing run:
+        - Fetch logs and identify root cause
+        - Classify: flaky test, dependency issue, config drift, code bug
+        - Propose minimal fix
+        - Verify fix resolves the failure class
+      tools:
+        - bash
+        - read_file
+        - write_file
+      skills:
+        - ci-debug
+      max_turns: 80
+      timeout_seconds: 600
+
+# ============================================================================
+# ACP Agents (external coding tools)
+# NOTE: Require ACP adapters installed in container image.
+#       Uncomment when adapters are available.
+# ============================================================================
+
+# acp_agents:
+#   claude_code:
+#     command: npx
+#     args: ["-y", "@zed-industries/claude-agent-acp"]
+#     description: "Claude Code for implementation, refactoring, and complex multi-file changes"
+#     auto_approve_permissions: true
+#     env:
+#       ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY
+#
+#   codex:
+#     command: npx
+#     args: ["-y", "@zed-industries/codex-acp"]
+#     description: "Codex CLI for repository tasks and quick code generation"
+#     auto_approve_permissions: true
+#     env:
+#       OPENAI_API_KEY: $OPENAI_API_KEY
+
+# ============================================================================
+# Skills
+# ============================================================================
+
+skills:
+  container_path: /mnt/skills
+
+# ============================================================================
+# Title Generation
+# ============================================================================
+
+title:
+  enabled: true
+  max_words: 6
+  max_chars: 60
+  model_name: null
+
+# ============================================================================
+# Summarization
+# ============================================================================
+
+summarization:
+  enabled: true
+  model_name: utility-fast
+  trigger:
+    - type: tokens
+      value: 15564
+  keep:
+    type: messages
+    value: 10
+  trim_tokens_to_summarize: 15564
+  summary_prompt: null
+  preserve_recent_skill_count: 5
+  preserve_recent_skill_tokens: 25000
+  preserve_recent_skill_tokens_per_skill: 5000
+  skill_file_read_tool_names:
+    - read_file
+    - read
+    - view
+    - cat
+
+# ============================================================================
+# Memory
+# ============================================================================
+
+memory:
+  enabled: true
+  storage_path: memory.json
+  debounce_seconds: 30
+  model_name: null
+  max_facts: 100
+  fact_confidence_threshold: 0.7
+  injection_enabled: true
+  max_injection_tokens: 2000
+
+# ============================================================================
+# Agents API
+# ============================================================================
+
+agents_api:
+  enabled: false
+
+# ============================================================================
+# Skill Evolution
+# ============================================================================
+
+skill_evolution:
+  enabled: false
+  moderation_model_name: null
+
+# ============================================================================
+# Database
+# ============================================================================
+
+database:
+  backend: sqlite
+  sqlite_dir: .deer-flow/data
+
+# ============================================================================
+# Run Events
+# ============================================================================
+
+run_events:
+  backend: memory
+  max_trace_content: 10240
+  track_token_usage: true
