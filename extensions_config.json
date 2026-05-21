@@ -1,0 +1,39 @@
+{
+  "_comment": "Cluster-internal MCP servers proxied through MCPO (mcpo.llm.svc.cluster.local:8080). All use SSE transport. URLs are only reachable from within the Kubernetes cluster (llm namespace).",
+  "mcpServers": {
+    "github": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcpo.llm.svc.cluster.local:8080/github/sse",
+      "env": {
+        "GITHUB_TOKEN": "$GITHUB_TOKEN"
+      },
+      "description": "GitHub repository operations -- PRs, issues, code search, file contents"
+    },
+    "kubernetes": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcpo.llm.svc.cluster.local:8080/kubernetes/sse",
+      "description": "Kubernetes cluster operations -- pods, deployments, logs, exec"
+    },
+    "sentinel": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcpo.llm.svc.cluster.local:8080/sentinel/sse",
+      "description": "Sentinel declarative QA -- run test plans, get results, manage validations"
+    },
+    "filesystem": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcpo.llm.svc.cluster.local:8080/filesystem/sse",
+      "description": "Filesystem access for repository analysis and code reading"
+    },
+    "memory": {
+      "enabled": true,
+      "type": "sse",
+      "url": "http://mcpo.llm.svc.cluster.local:8080/memory/sse",
+      "description": "Persistent memory store for cross-session context retention"
+    }
+  },
+  "skills": {}
+}
