@@ -52,9 +52,9 @@ jobs:
           import json, os
           services = json.loads(os.environ["SERVICES"])
           meta = {
-              "gateway":     {"build_context": ".",                  "dockerfile_dir": "backend",            "dockerfile": "Dockerfile"},
-              "frontend":    {"build_context": ".",                  "dockerfile_dir": "frontend",           "dockerfile": "Dockerfile"},
-              "provisioner": {"build_context": "docker/provisioner", "dockerfile_dir": "docker/provisioner", "dockerfile": "Dockerfile"},
+              "gateway":     {"build_context": ".",                  "dockerfile_dir": "backend",            "dockerfile": "Dockerfile", "build_args": "UV_EXTRAS=ollama"},
+              "frontend":    {"build_context": ".",                  "dockerfile_dir": "frontend",           "dockerfile": "Dockerfile", "build_args": ""},
+              "provisioner": {"build_context": "docker/provisioner", "dockerfile_dir": "docker/provisioner", "dockerfile": "Dockerfile", "build_args": ""},
           }
           platforms = [
               {"arch": "amd64", "runner": "stax-builder"},
@@ -107,6 +107,7 @@ jobs:
           file: ${{ matrix.dockerfile_dir }}/${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.arch }}
           push: true
+          build-args: ${{ matrix.build_args }}
           # Per-arch tag — combined into the canonical :sha-XXX and :latest
           # manifest by the manifest job below.
           tags: |
