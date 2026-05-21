@@ -122,29 +122,34 @@ def _init_k8s_client() -> k8s_client.CoreV1Api:
             ) from exc
     else:
         logger.warning(
-            f"Kubeconfig not found at {KUBECONFIG_PATH}; trying in-cluster config"
+            f"Kubeconfig not found at {KUBECONFIG_PATH}; using in-cluster config"
         )
-        try:
-            k8s_config.load_incluster_config()
-        except Exception as exc:
+        sa_token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        sa_ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        svc_host = os.environ.get("KUBERNETES_SERVICE_HOST")
+        svc_port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
+
+        if not svc_host or not os.path.exists(sa_token_path):
             raise RuntimeError(
                 "Failed to initialize Kubernetes client. "
-                f"No kubeconfig at {KUBECONFIG_PATH}, and in-cluster config is unavailable: {exc}"
-            ) from exc
+                f"No kubeconfig at {KUBECONFIG_PATH}, and in-cluster env is unavailable "
+                f"(KUBERNETES_SERVICE_HOST={svc_host!r}, token exists={os.path.exists(sa_token_path)})"
+            )
 
-    # When connecting from inside Docker to the host's K8s API, the
-    # kubeconfig may reference ``localhost`` or ``127.0.0.1``.  We
-    # optionally rewrite the server address so it reaches the host.
-    k8s_api_server = os.environ.get("K8S_API_SERVER")
-    if k8s_api_server:
-        configuration = k8s_client.Configuration.get_default_copy()
-        configuration.host = k8s_api_server
-        # Self-signed certs are common for local clusters
-        configuration.verify_ssl = False
+        with open(sa_token_path) as f:
+            token = f.read().strip()
+
+        configuration = k8s_client.Configuration()
+        configuration.host = f"https://{svc_host}:{svc_port}"
+        configuration.api_key["authorization"] = f"Bearer {token}"
+        if os.path.exists(sa_ca_path):
+            configuration.ssl_ca_cert = sa_ca_path
+        else:
+            configuration.verify_ssl = False
+
         api_client = k8s_client.ApiClient(configuration)
+        logger.info(f"In-cluster client configured for {configuration.host}")
         return k8s_client.CoreV1Api(api_client)
-
-    return k8s_client.CoreV1Api()
 
 
 def _wait_for_kubeconfig(timeout: int = 30) -> None:
