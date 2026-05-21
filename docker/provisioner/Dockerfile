@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir \
     ${PIP_INDEX_URL:+--index-url "$PIP_INDEX_URL"} \
     fastapi \
     "uvicorn[standard]" \
-    kubernetes
+    "kubernetes>=31,<36"
 
 WORKDIR /app
 COPY app.py .
