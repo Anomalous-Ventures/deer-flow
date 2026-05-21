@@ -24,6 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ollama = ["deerflow-harness[ollama]"]
 postgres = ["deerflow-harness[postgres]"]
 discord = ["discord.py>=2.7.0"]
 
