@@ -124,10 +124,8 @@ def _init_k8s_client() -> k8s_client.CoreV1Api:
         logger.warning(
             f"Kubeconfig not found at {KUBECONFIG_PATH}; using in-cluster config"
         )
-        sa_token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-        sa_ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
         svc_host = os.environ.get("KUBERNETES_SERVICE_HOST")
-        svc_port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
+        sa_token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
         if not svc_host or not os.path.exists(sa_token_path):
             raise RuntimeError(
@@ -136,20 +134,15 @@ def _init_k8s_client() -> k8s_client.CoreV1Api:
                 f"(KUBERNETES_SERVICE_HOST={svc_host!r}, token exists={os.path.exists(sa_token_path)})"
             )
 
-        with open(sa_token_path) as f:
-            token = f.read().strip()
+        try:
+            k8s_config.load_incluster_config()
+        except k8s_config.ConfigException as exc:
+            raise RuntimeError(
+                f"Failed to load in-cluster config: {exc}"
+            ) from exc
 
-        configuration = k8s_client.Configuration()
-        configuration.host = f"https://{svc_host}:{svc_port}"
-        configuration.api_key["authorization"] = f"Bearer {token}"
-        if os.path.exists(sa_ca_path):
-            configuration.ssl_ca_cert = sa_ca_path
-        else:
-            configuration.verify_ssl = False
-
-        api_client = k8s_client.ApiClient(configuration)
-        logger.info(f"In-cluster client configured for {configuration.host}")
-        return k8s_client.CoreV1Api(api_client)
+        logger.info(f"In-cluster client configured for https://{svc_host}")
+        return k8s_client.CoreV1Api()
 
 
 def _wait_for_kubeconfig(timeout: int = 30) -> None:
