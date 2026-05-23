@@ -120,6 +120,7 @@ def _init_k8s_client() -> k8s_client.CoreV1Api:
             raise RuntimeError(
                 f"Failed to load kubeconfig from {KUBECONFIG_PATH}: {exc}"
             ) from exc
+        return k8s_client.CoreV1Api()
     else:
         logger.warning(
             f"Kubeconfig not found at {KUBECONFIG_PATH}; using in-cluster config"
