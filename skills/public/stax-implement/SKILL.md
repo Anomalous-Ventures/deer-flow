@@ -1,6 +1,6 @@
 ---
 name: stax-implement
-description: Implement a STAX platform roadmap item end-to-end. Load this skill when the user asks to implement, build, fix, or complete any STAX roadmap task. Covers the full workflow from codebase research through PR creation, covering Pulumi infrastructure, Python services, K8s manifests, tests, and sentinel validation.
+description: Implement a STAX platform roadmap item end-to-end. Load this skill when the user asks to implement, build, fix, or complete any STAX roadmap task. Covers the full workflow from codebase research through PR creation, covering Pulumi infrastructure, Python services, K8s manifests, tests, and ophanim validation.
 ---
 
 # STAX Implementation Workflow
@@ -115,9 +115,9 @@ kubectl rollout status deploy/deer-flow-gateway -n llm
 kubectl get pods -n llm | grep deer-flow
 curl -sf http://deer-flow-gateway.llm.svc.cluster.local:8001/health
 
-# For DeerFlow changes: sentinel validation
-# cd to sentinel repo and run:
-# sentinel validate plans/deer-flow.yaml
+# For DeerFlow changes: ophanim validation
+# cd to ophanim repo and run:
+# ophanim-qa validate plans/deer-flow.yaml
 ```
 
 ## Common STAX Implementation Patterns
