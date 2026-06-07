@@ -1,6 +1,6 @@
 ---
 name: deploy-validate
-description: Validate a deployment end-to-end using Pulumi preview/up and Sentinel test plans. Covers infrastructure diff review, deployment execution, and post-deploy QA. Load stax-context first.
+description: Validate a deployment end-to-end using Pulumi preview/up and Ophanim test plans. Covers infrastructure diff review, deployment execution, and post-deploy QA. Load stax-context first.
 ---
 
 # Deploy Validate Skill
@@ -10,7 +10,7 @@ Full deployment validation workflow for STAX platform services.
 ## Inputs
 
 - **stack**: Pulumi stack directory (e.g., `pulumi/stacks/27-deer-flow`)
-- **sentinel_plan**: Sentinel plan name (e.g., `deer-flow`)
+- **ophanim_plan**: Ophanim plan name (e.g., `deer-flow`)
 - **skip_deploy**: If true, only validate current state without running `pulumi up`
 
 ## Workflow
@@ -61,10 +61,10 @@ curl -sf http://<service>.<namespace>.svc.cluster.local:<port>/health \
 
 Report: HTTP status, response time, body snippet.
 
-**Sentinel validation**
+**Ophanim validation**
 
 ```bash
-sentinel validate plans/<sentinel_plan>.yaml 2>&1
+ophanim-qa validate plans/<ophanim_plan>.yaml 2>&1
 ```
 
 Parse results:
@@ -106,7 +106,7 @@ Format:
 |---------|----------|--------|---------|
 | <svc>   | <url>    | 200 OK | 42ms    |
 
-### Sentinel Results
+### Ophanim Results
 | Checkpoint | Result | Notes |
 |------------|--------|-------|
 | <name>     | PASS   |       |
@@ -119,7 +119,7 @@ Format:
 ## Rollback Criteria
 
 Suggest rollback ONLY when ALL of:
-- Hard-fail Sentinel checkpoint
+- Hard-fail Ophanim checkpoint
 - Health endpoint returning 5xx
 - Previous image tag is known-good
 
@@ -137,7 +137,7 @@ cd <stack_dir> && pulumi up --yes --target '<resource_urn>' 2>&1
 | Pod CrashLoopBackOff | Config/secret missing | `kubectl logs --previous` |
 | ImagePullBackOff | Registry auth or image tag wrong | `kubectl describe pod` |
 | 503 from ingress | Health check failing | Check readinessProbe |
-| Sentinel timeout | Service not reachable | Check NetworkPolicy + Service selector |
+| Ophanim timeout | Service not reachable | Check NetworkPolicy + Service selector |
 | PVC Pending | StorageClass missing or node affinity | `kubectl describe pvc` |
 
 ## Stax-Specific Notes

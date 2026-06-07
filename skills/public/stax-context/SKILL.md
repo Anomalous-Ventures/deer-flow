@@ -25,7 +25,7 @@ Anomalous-Ventures/stax
 
 Related repos (same org):
 - `Anomalous-Ventures/deer-flow` — DeerFlow fork (this agent's harness)
-- `Anomalous-Ventures/sentinel` — QA test plans (`plans/deer-flow.yaml` is merge gate)
+- `Anomalous-Ventures/ophanim-qa` — QA test plans (`plans/deer-flow.yaml` is merge gate)
 - `Anomalous-Ventures/healthcare-agent` — SOAP note / ambient docs agent
 - `Anomalous-Ventures/hive` — Hive AI platform
 
@@ -85,7 +85,7 @@ edit code
 └─> if CI green: gh pr merge --squash --delete-branch
 └─> (image build auto-triggers via build-images.yml if Dockerfile changed)
 └─> (auto-bump PR opens in stax updating image SHA)
-└─> validate deployment (curl health, sentinel run, kubectl get pods)
+└─> validate deployment (curl health, ophanim run, kubectl get pods)
 ```
 
 ## Active Constraints (must check before any change)
@@ -93,7 +93,7 @@ edit code
 - **No cloud model endpoints.** All models via Ollama (spark/spark02/gpu01/gpu02) or LiteLLM proxy (internal only).
 - **No secrets in code.** Vault → ExternalSecrets pipeline only.
 - **Branch deploy guard.** Never push directly to `main`.
-- **Sentinel gate.** DeerFlow changes require `sentinel validate plans/deer-flow.yaml` to pass before merge (9 checkpoints).
+- **Ophanim gate.** DeerFlow changes require `ophanim-qa validate plans/deer-flow.yaml` to pass before merge (9 checkpoints).
 - **Harbor registry.** All images pushed to `harbor.spooty.io/<project>/<name>:<sha-tag>`.
 - **Longhorn CSI.** PVCs use `storageClassName: longhorn`. Replicas are scatter-pinned; always check `kubectl get pv` before scaling to 0.
 - **gpu02 vision path.** gpu02 hosts `qwen3-vl:32b` and `phi4-reasoning`. Avoid scheduling non-AI workloads there.
@@ -125,4 +125,4 @@ GitHub Issues are the per-item work tracking. Roadmap items map 1:1 to GitHub Is
 | Run Pulumi tests locally | `cd pulumi && python -m pytest tests/ -x -q` |
 | List open PRs | `gh pr list --repo Anomalous-Ventures/stax` |
 | View roadmap pending | see Roadmap Source above |
-| Validate DeerFlow | `sentinel validate plans/deer-flow.yaml` (in sentinel repo) |
+| Validate DeerFlow | `ophanim-qa validate plans/deer-flow.yaml` (in ophanim repo) |

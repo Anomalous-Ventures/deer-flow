@@ -21,15 +21,15 @@ Anything else (source tree, configs, upstream workflows like `e2e-tests.yml` / `
 
 - **Pulumi stack:** [`pulumi/stacks/27-deer-flow`](https://github.com/Anomalous-Ventures/stax/tree/main/pulumi/stacks/27-deer-flow) in the `Anomalous-Ventures/stax` repo deploys the gateway / frontend / provisioner images built here into the `llm` namespace, with isolated sandbox pods in `deer-flow-sandboxes`.
 - **Bootstrap state:** [`pulumi/stacks/27-deer-flow/BOOTSTRAP_STATUS.md`](https://github.com/Anomalous-Ventures/stax/blob/main/pulumi/stacks/27-deer-flow/BOOTSTRAP_STATUS.md) is the live source of truth for what's deployed, what's blocked, and what helper script unblocks each phase.
-- **QA:** Sentinel TestPlan at [`Anomalous-Ventures/sentinel/plans/deer-flow.yaml`](https://github.com/Anomalous-Ventures/sentinel/blob/main/plans/deer-flow.yaml) is the merge gate (9 checkpoints, 4 hard-fail covering health/UI/gateway-API/echo-task, 5 soft-fail covering langfuse/sandbox/searxng/litellm/ollama).
+- **QA:** Ophanim TestPlan at [`Anomalous-Ventures/ophanim-qa/plans/deer-flow.yaml`](https://github.com/Anomalous-Ventures/ophanim-qa/blob/main/plans/deer-flow.yaml) is the merge gate (9 checkpoints, 4 hard-fail covering health/UI/gateway-API/echo-task, 5 soft-fail covering langfuse/sandbox/searxng/litellm/ollama).
 - **Wiki page:** [.github wiki -- Deer-Flow](https://github.com/Anomalous-Ventures/.github/wiki/Deer-Flow) for the high-level overview.
 
 ## Upstream rebase policy
 
 The `upstream-sync.yml` workflow runs daily at 07:00 UTC and on manual dispatch. It opens a PR titled `chore: upstream sync YYYYMMDD` if the fork is behind. Review pattern:
 
-1. Check the PR's diff for any breaking changes in components STAX depends on (gateway HTTP API, provisioner contract, frontend `data-testid` selectors used by Sentinel).
-2. If selectors change, update `Anomalous-Ventures/sentinel/plans/deer-flow.yaml` in the **same** merge.
+1. Check the PR's diff for any breaking changes in components STAX depends on (gateway HTTP API, provisioner contract, frontend `data-testid` selectors used by Ophanim).
+2. If selectors change, update `Anomalous-Ventures/ophanim-qa/plans/deer-flow.yaml` in the **same** merge.
 3. Merge fast -- keeping this fork close to upstream minimizes cherry-pick conflicts.
 
 ## Don't do here
