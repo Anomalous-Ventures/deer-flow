@@ -1,8 +1,8 @@
-"""AI Dev Controller proxy router.
+"""Ariadne proxy router.
 
 Exposes ``/api/v1/controller/*`` on the deer-flow gateway and forwards
-the request to the in-cluster ai-dev-controller service. This lets
-deer-flow act as the operator-facing UI for ADC without bypassing
+the request to the in-cluster Ariadne service. This lets deer-flow
+act as the operator-facing UI for Ariadne without bypassing
 the gateway's auth + audit layer.
 
 Safety:
@@ -10,15 +10,15 @@ Safety:
     to enable. When disabled, every endpoint returns 404 so the
     surface is invisible.
   * Admin-only. ``system_role != "admin"`` -> 403.
-  * Strict path allow-list. Only the ADC routes we explicitly
+  * Strict path allow-list. Only the Ariadne routes we explicitly
     forward are reachable; anything else returns 404.
   * Read-mostly: GET + POST are forwarded. PUT/PATCH/DELETE are
     rejected at the router until a named use-case proves they're
     needed.
 
 Configuration:
-  * ``DEER_FLOW_AI_DEV_CONTROLLER_URL`` -- upstream base URL.
-    Default ``http://ai-dev-controller.llm.svc.cluster.local:8096``.
+  * ``DEER_FLOW_ARIADNE_URL`` -- upstream base URL.
+    Default ``http://ariadne.llm.svc.cluster.local:8096``.
   * ``DEER_FLOW_CONTROLLER_PROXY_TIMEOUT_SECONDS`` -- per-request
     timeout (default 30).
 """
@@ -38,10 +38,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/controller", tags=["controller"])
 
-DEFAULT_ADC_URL = "http://ai-dev-controller.llm.svc.cluster.local:8096"
+DEFAULT_ARIADNE_URL = "http://ariadne.llm.svc.cluster.local:8096"
 DEFAULT_TIMEOUT = 30.0
 
-# Allow-listed ADC paths. Each entry is (method, suffix-or-prefix,
+# Allow-listed Ariadne paths. Each entry is (method, suffix-or-prefix,
 # is_prefix). The "suffix" is the portion AFTER /api/v1/controller.
 # is_prefix=True matches sub-paths so /staple/<run_id>/logs maps to
 # the upstream /api/staple/<run_id>/logs.
@@ -66,9 +66,9 @@ def _is_enabled() -> bool:
     return os.environ.get("DEER_FLOW_CONTROLLER_PROXY_ENABLED", "").strip() == "1"
 
 
-def _adc_base_url() -> str:
-    raw = os.environ.get("DEER_FLOW_AI_DEV_CONTROLLER_URL", "").strip()
-    return (raw or DEFAULT_ADC_URL).rstrip("/")
+def _ariadne_base_url() -> str:
+    raw = os.environ.get("DEER_FLOW_ARIADNE_URL", "").strip()
+    return (raw or DEFAULT_ARIADNE_URL).rstrip("/")
 
 
 def _timeout() -> float:
@@ -95,9 +95,9 @@ def _path_allowed(method: str, suffix: str) -> bool:
 
 
 def _map_to_upstream(suffix: str) -> str:
-    """Map deer-flow /api/v1/controller/<x> to ADC's path namespace.
+    """Map deer-flow /api/v1/controller/<x> to Ariadne's path namespace.
 
-    ADC's actual mount points are:
+    Ariadne's actual mount points are:
       * /dev-loop/*  (no /api prefix)
       * /api/kanban/*
       * /api/staple/*
@@ -133,7 +133,7 @@ def _filter_request_headers(headers: Iterable[tuple[bytes, bytes]]) -> dict[str,
         if key in _HOP_BY_HOP:
             continue
         # Strip the deer-flow auth cookie before forwarding upstream.
-        # ADC does not consume deer-flow's JWT; passing it leaks the
+        # Ariadne does not consume deer-flow's JWT; passing it leaks the
         # cookie to a non-issuing service.
         if key == "cookie":
             continue
@@ -171,7 +171,7 @@ async def proxy(suffix: str, request: Request) -> Response:
         raise HTTPException(status_code=404, detail="path not allowed")
 
     upstream_path = _map_to_upstream(normalized)
-    upstream_url = f"{_adc_base_url()}{upstream_path}"
+    upstream_url = f"{_ariadne_base_url()}{upstream_path}"
 
     body = await request.body()
     headers = _filter_request_headers(request.headers.raw)
@@ -190,13 +190,13 @@ async def proxy(suffix: str, request: Request) -> Response:
             "controller_proxy.upstream_timeout",
             extra={"path": upstream_path, "method": request.method},
         )
-        raise HTTPException(status_code=504, detail="ADC upstream timeout")
+        raise HTTPException(status_code=504, detail="Ariadne upstream timeout")
     except httpx.HTTPError as exc:
         logger.error(
             "controller_proxy.upstream_error",
             extra={"path": upstream_path, "error": str(exc)},
         )
-        raise HTTPException(status_code=502, detail="ADC upstream error")
+        raise HTTPException(status_code=502, detail="Ariadne upstream error")
 
     return Response(
         content=upstream.content,

@@ -28,7 +28,7 @@ export default async function ControllerPage() {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-2">
         <p className="text-muted-foreground">
-          Admin role required to view the AI Dev Controller surface.
+          Admin role required to view the Ariadne surface.
         </p>
       </div>
     );

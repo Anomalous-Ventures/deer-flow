@@ -134,7 +134,7 @@ export function ControllerContent() {
     <div className="flex flex-col gap-6 p-6">
       <header className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">AI Dev Controller</h1>
+          <h1 className="text-2xl font-semibold">Ariadne</h1>
           <p className="text-muted-foreground text-sm">
             Operator surface for the in-cluster dev loop.
           </p>
