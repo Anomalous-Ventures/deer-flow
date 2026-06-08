@@ -1,6 +1,6 @@
-"""Unit tests for the AI Dev Controller proxy router.
+"""Unit tests for the Ariadne proxy router.
 
-Covers the contract surface that future ADC integrations will rely on:
+Covers the contract surface that future Ariadne integrations will rely on:
 
 * Disabled by default (env unset -> 404 on every endpoint).
 * Admin-only gate (system_role != "admin" -> 403).
@@ -250,7 +250,7 @@ def test_upstream_timeout_returns_504(monkeypatch: pytest.MonkeyPatch) -> None:
         resp = client.get("/api/v1/controller/health")
 
     assert resp.status_code == 504
-    assert resp.json()["detail"] == "ADC upstream timeout"
+    assert resp.json()["detail"] == "Ariadne upstream timeout"
 
 
 def test_upstream_transport_error_returns_502(
@@ -268,7 +268,7 @@ def test_upstream_transport_error_returns_502(
         resp = client.get("/api/v1/controller/health")
 
     assert resp.status_code == 502
-    assert resp.json()["detail"] == "ADC upstream error"
+    assert resp.json()["detail"] == "Ariadne upstream error"
 
 
 def test_upstream_error_status_propagated(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -278,14 +278,14 @@ def test_upstream_error_status_propagated(monkeypatch: pytest.MonkeyPatch) -> No
 
     _install_upstream(
         monkeypatch,
-        lambda req: httpx.Response(503, json={"error": "ADC busy"}),
+        lambda req: httpx.Response(503, json={"error": "Ariadne busy"}),
     )
 
     with TestClient(_build_app()) as client:
         resp = client.get("/api/v1/controller/health")
 
     assert resp.status_code == 503
-    assert resp.json() == {"error": "ADC busy"}
+    assert resp.json() == {"error": "Ariadne busy"}
 
 
 def test_query_params_forwarded(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -309,9 +309,9 @@ def test_query_params_forwarded(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "state=in_progress" in url
 
 
-def test_custom_adc_url_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_custom_ariadne_url_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DEER_FLOW_CONTROLLER_PROXY_ENABLED", "1")
-    monkeypatch.setenv("DEER_FLOW_AI_DEV_CONTROLLER_URL", "http://alt-adc.example:9000/")
+    monkeypatch.setenv("DEER_FLOW_ARIADNE_URL", "http://alt-ariadne.example:9000/")
     _install_user(monkeypatch, _admin_user())
 
     captured = _install_upstream(
@@ -323,4 +323,4 @@ def test_custom_adc_url_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
         resp = client.get("/api/v1/controller/health")
 
     assert resp.status_code == 200
-    assert captured["url"].startswith("http://alt-adc.example:9000/")
+    assert captured["url"].startswith("http://alt-ariadne.example:9000/")

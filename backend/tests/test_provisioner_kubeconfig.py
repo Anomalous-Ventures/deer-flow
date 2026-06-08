@@ -74,11 +74,15 @@ def test_init_k8s_client_uses_file_kubeconfig(tmp_path, monkeypatch, provisioner
 def test_init_k8s_client_falls_back_to_incluster_when_missing(tmp_path, monkeypatch, provisioner_module):
     """When kubeconfig file is missing, in-cluster config should be attempted."""
     missing_path = tmp_path / "missing-config"
+    token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
     calls: dict[str, int] = {"incluster": 0}
 
     def fake_load_incluster_config():
         calls["incluster"] += 1
+
+    def fake_exists(path: str):
+        return path == token_path
 
     monkeypatch.setattr(
         provisioner_module.k8s_config,
@@ -90,6 +94,8 @@ def test_init_k8s_client_falls_back_to_incluster_when_missing(tmp_path, monkeypa
         "CoreV1Api",
         lambda *args, **kwargs: "core-v1",
     )
+    monkeypatch.setattr(provisioner_module.os.path, "exists", fake_exists)
+    monkeypatch.setenv("KUBERNETES_SERVICE_HOST", "10.96.0.1")
 
     provisioner_module.KUBECONFIG_PATH = str(missing_path)
 
@@ -97,3 +103,23 @@ def test_init_k8s_client_falls_back_to_incluster_when_missing(tmp_path, monkeypa
 
     assert calls["incluster"] == 1
     assert result == "core-v1"
+
+
+def test_init_k8s_client_rejects_missing_kubeconfig_without_incluster_env(
+    tmp_path,
+    monkeypatch,
+    provisioner_module,
+):
+    """Missing kubeconfig should fail clearly when in-cluster config is unavailable."""
+    missing_path = tmp_path / "missing-config"
+
+    monkeypatch.delenv("KUBERNETES_SERVICE_HOST", raising=False)
+    provisioner_module.KUBECONFIG_PATH = str(missing_path)
+
+    try:
+        provisioner_module._init_k8s_client()
+        raise AssertionError("Expected RuntimeError when no Kubernetes config is available")
+    except RuntimeError as exc:
+        message = str(exc)
+        assert "No kubeconfig" in message
+        assert "in-cluster env is unavailable" in message
