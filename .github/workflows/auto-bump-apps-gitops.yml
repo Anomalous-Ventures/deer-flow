@@ -1,0 +1,137 @@
+name: Auto-bump apps GitOps image pins
+
+on:
+  workflow_run:
+    workflows: ["Build images (gateway + frontend + provisioner)"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    name: Update Deer Flow image SHAs in apps GitOps
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT="sha-$(echo $SHA | cut -c1-7)"
+          echo "short=$SHORT" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $SHORT"
+
+      - name: Validate apps deploy token
+        env:
+          GH_TOKEN: ${{ secrets.APPS_DEPLOY_TOKEN || secrets.STAX_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::Set APPS_DEPLOY_TOKEN or STAX_DEPLOY_TOKEN with write access to Anomalous-Ventures/apps"
+            exit 1
+          fi
+
+      - name: Clone apps GitOps repo
+        env:
+          GH_TOKEN: ${{ secrets.APPS_DEPLOY_TOKEN || secrets.STAX_DEPLOY_TOKEN }}
+        run: |
+          git clone --depth=1 \
+            "https://x-access-token:${GH_TOKEN}@github.com/Anomalous-Ventures/apps.git" \
+            apps
+
+      - name: Update apps manifests
+        working-directory: apps
+        env:
+          TAG: ${{ steps.tag.outputs.short }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          tag = os.environ["TAG"]
+          registry = "harbor.spooty.io/anomalous-ventures"
+          updates = {
+              Path("deployments/27-deer-flow/frontend/deployment.yaml"): (
+                  r"(\s*image:\s*)\S+/deer-flow-frontend:\S+",
+                  rf"\1{registry}/deer-flow-frontend:{tag}",
+              ),
+              Path("deployments/27-deer-flow/gateway/deployment.yaml"): (
+                  r"(\s*image:\s*)\S+/deer-flow-gateway:\S+",
+                  rf"\1{registry}/deer-flow-gateway:{tag}",
+              ),
+              Path("deployments/27-deer-flow/provisioner/deployment.yaml"): (
+                  r"(\s*image:\s*)\S+/deer-flow-provisioner:\S+",
+                  rf"\1{registry}/deer-flow-provisioner:{tag}",
+              ),
+          }
+
+          changed = []
+          for path, (pattern, replacement) in updates.items():
+              text = path.read_text()
+              updated, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one image field match in {path}, got {count}")
+              if updated != text:
+                  path.write_text(updated)
+                  changed.append(str(path))
+
+          print(f"Updated {len(changed)} Deer Flow image pins to {tag}")
+          for path in changed:
+              print(f"- {path}")
+          PY
+          git diff
+
+      - name: Create PR
+        working-directory: apps
+        env:
+          GH_TOKEN: ${{ secrets.APPS_DEPLOY_TOKEN || secrets.STAX_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.short }}"
+          BRANCH="chore/deer-flow-image-bump-${TAG}"
+
+          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git checkout -b "$BRANCH"
+          git add \
+            deployments/27-deer-flow/frontend/deployment.yaml \
+            deployments/27-deer-flow/gateway/deployment.yaml \
+            deployments/27-deer-flow/provisioner/deployment.yaml
+          if git diff --cached --quiet; then
+            echo "No GitOps image pin changes for ${TAG}"
+            exit 0
+          fi
+          git commit -m "chore(deer-flow): bump images to ${TAG}"
+          git push origin "$BRANCH"
+
+          existing_pr="$(
+            gh pr list \
+              --repo Anomalous-Ventures/apps \
+              --head "$BRANCH" \
+              --json url \
+              --jq '.[0].url // empty'
+          )"
+          if [ -n "$existing_pr" ]; then
+            echo "Existing PR: $existing_pr"
+            exit 0
+          fi
+
+          gh pr create \
+            --repo Anomalous-Ventures/apps \
+            --title "chore(deer-flow): bump images to ${TAG}" \
+            --body "Automated image pin update from deer-flow build.
+
+          Source commit: ${{ steps.tag.outputs.source_sha }}
+          Build run: ${{ github.event.workflow_run.html_url }}
+
+          Deployment path:
+          - Merge this apps GitOps PR.
+          - Let ArgoCD reconcile the deer-flow frontend, gateway, and provisioner apps.
+          - Verify ArgoCD sync/health and live workload image readbacks before readiness claims." \
+            --head "$BRANCH" \
+            --base main
