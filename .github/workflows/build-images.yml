@@ -23,6 +23,10 @@ permissions:
   contents: read
   packages: write
 
+env:
+  HARBOR_REGISTRY: harbor.spooty.io
+  HARBOR_PROJECT: library
+
 jobs:
   matrix:
     name: Resolve build matrix
@@ -85,11 +89,10 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Log in to Harbor
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ${{ secrets.HARBOR_REGISTRY }}
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          : "${HARBOR_USERNAME:?runner must inject HARBOR_USERNAME from harbor-ci-push-secret}"
+          : "${HARBOR_PASSWORD:?runner must inject HARBOR_PASSWORD from harbor-ci-push-secret}"
+          printf '%s' "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -111,15 +114,15 @@ jobs:
           # Per-arch tag — combined into the canonical :sha-XXX and :latest
           # manifest by the manifest job below.
           tags: |
-            ${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}-${{ matrix.arch }}
-          cache-from: type=registry,ref=${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:buildcache-${{ matrix.arch }}
-          cache-to: type=registry,ref=${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:buildcache-${{ matrix.arch }},mode=max
+            ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}-${{ matrix.arch }}
+          cache-from: type=registry,ref=${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/deer-flow-${{ matrix.service }}:buildcache-${{ matrix.arch }}
+          cache-to: type=registry,ref=${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/deer-flow-${{ matrix.service }}:buildcache-${{ matrix.arch }},mode=max
 
       - name: Summary
         run: |
           echo "### Built deer-flow-${{ matrix.service }} (${{ matrix.arch }})" >> "$GITHUB_STEP_SUMMARY"
           echo "- Tag: \`${{ steps.tag.outputs.sha }}-${{ matrix.arch }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Image: \`${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}-${{ matrix.arch }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image: \`${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}-${{ matrix.arch }}\`" >> "$GITHUB_STEP_SUMMARY"
 
   manifest:
     name: Combine multiarch manifest (${{ matrix.service }})
@@ -131,11 +134,10 @@ jobs:
         service: ${{ fromJSON(needs.matrix.outputs.services) }}
     steps:
       - name: Log in to Harbor
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ${{ secrets.HARBOR_REGISTRY }}
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          : "${HARBOR_USERNAME:?runner must inject HARBOR_USERNAME from harbor-ci-push-secret}"
+          : "${HARBOR_PASSWORD:?runner must inject HARBOR_PASSWORD from harbor-ci-push-secret}"
+          printf '%s' "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -148,21 +150,22 @@ jobs:
 
       - name: Combine per-arch tags into multiarch manifest
         env:
-          REG: ${{ secrets.HARBOR_REGISTRY }}
+          REG: ${{ env.HARBOR_REGISTRY }}
+          PROJECT: ${{ env.HARBOR_PROJECT }}
           SVC: ${{ matrix.service }}
           SHA: ${{ steps.tag.outputs.sha }}
         run: |
           set -euo pipefail
           for tag in "$SHA" "latest"; do
             docker buildx imagetools create \
-              -t "${REG}/anomalous-ventures/deer-flow-${SVC}:${tag}" \
-              "${REG}/anomalous-ventures/deer-flow-${SVC}:${SHA}-amd64" \
-              "${REG}/anomalous-ventures/deer-flow-${SVC}:${SHA}-arm64"
+              -t "${REG}/${PROJECT}/deer-flow-${SVC}:${tag}" \
+              "${REG}/${PROJECT}/deer-flow-${SVC}:${SHA}-amd64" \
+              "${REG}/${PROJECT}/deer-flow-${SVC}:${SHA}-arm64"
           done
-          docker buildx imagetools inspect "${REG}/anomalous-ventures/deer-flow-${SVC}:${SHA}"
+          docker buildx imagetools inspect "${REG}/${PROJECT}/deer-flow-${SVC}:${SHA}"
 
       - name: Summary
         run: |
           echo "### Multiarch manifest deer-flow-${{ matrix.service }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Tag: \`${{ steps.tag.outputs.sha }}\` (linux/amd64 + linux/arm64)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Image: \`${{ secrets.HARBOR_REGISTRY }}/anomalous-ventures/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image: \`${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/deer-flow-${{ matrix.service }}:${{ steps.tag.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
