@@ -96,6 +96,8 @@ make lint       # Lint with ruff
 make format     # Format code with ruff
 ```
 
+Lint and format use the project-locked Ruff through `uv run --frozen`; tool upgrades belong in `uv.lock` so local and CI checks use the same version.
+
 Regression tests related to Docker/provisioner behavior:
 - `tests/test_docker_sandbox_mode_detection.py` (mode detection from `config.yaml`)
 - `tests/test_provisioner_kubeconfig.py` (kubeconfig file/directory handling)
