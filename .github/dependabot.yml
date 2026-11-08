@@ -1,0 +1,97 @@
+version: 2
+updates:
+- package-ecosystem: docker
+  directories:
+  - /backend
+  - /docker/provisioner
+  - /frontend
+  multi-ecosystem-group: weekly-patches
+  patterns:
+  - '*'
+  ignore:
+  - dependency-name: '*'
+    update-types:
+    - version-update:semver-major
+    - version-update:semver-minor
+  allow:
+  - dependency-type: direct
+    update-types:
+    - version-update:semver-patch
+- package-ecosystem: docker-compose
+  directory: /docker
+  multi-ecosystem-group: weekly-patches
+  patterns:
+  - '*'
+  ignore:
+  - dependency-name: '*'
+    update-types:
+    - version-update:semver-major
+    - version-update:semver-minor
+  allow:
+  - dependency-type: direct
+    update-types:
+    - version-update:semver-patch
+- package-ecosystem: github-actions
+  directory: /
+  multi-ecosystem-group: weekly-patches
+  patterns:
+  - '*'
+  ignore:
+  - dependency-name: '*'
+    update-types:
+    - version-update:semver-major
+    - version-update:semver-minor
+  allow:
+  - dependency-type: direct
+    update-types:
+    - version-update:semver-patch
+- package-ecosystem: npm
+  directory: /frontend
+  multi-ecosystem-group: weekly-patches
+  patterns:
+  - '*'
+  ignore:
+  - dependency-name: '*'
+    update-types:
+    - version-update:semver-major
+    - version-update:semver-minor
+  allow:
+  - dependency-type: direct
+    update-types:
+    - version-update:semver-patch
+- package-ecosystem: pip
+  directory: /backend/packages/harness
+  multi-ecosystem-group: weekly-patches
+  patterns:
+  - '*'
+  ignore:
+  - dependency-name: '*'
+    update-types:
+    - version-update:semver-major
+    - version-update:semver-minor
+  allow:
+  - dependency-type: direct
+    update-types:
+    - version-update:semver-patch
+- package-ecosystem: uv
+  directory: /backend
+  multi-ecosystem-group: weekly-patches
+  patterns:
+  - '*'
+  ignore:
+  - dependency-name: '*'
+    update-types:
+    - version-update:semver-major
+    - version-update:semver-minor
+  allow:
+  - dependency-type: direct
+    update-types:
+    - version-update:semver-patch
+multi-ecosystem-groups:
+  weekly-patches:
+    schedule:
+      interval: weekly
+      day: monday
+      time: 09:00
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 1

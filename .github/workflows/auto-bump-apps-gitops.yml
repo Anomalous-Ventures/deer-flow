@@ -54,7 +54,7 @@ jobs:
           from pathlib import Path
 
           tag = os.environ["TAG"]
-          registry = "harbor.spooty.io/anomalous-ventures"
+          registry = "harbor.spooty.io/library"
           updates = {
               Path("deployments/27-deer-flow/frontend/deployment.yaml"): (
                   r"(\s*image:\s*)\S+/deer-flow-frontend:\S+",
