@@ -11,8 +11,8 @@ test:
 	PYTHONPATH=. uv run pytest tests/ -v
 
 lint:
-	uvx ruff check .
-	uvx ruff format --check .
+	uv run --frozen ruff check .
+	uv run --frozen ruff format --check .
 
 format:
-	uvx ruff check . --fix && uvx ruff format .
+	uv run --frozen ruff check . --fix && uv run --frozen ruff format .
