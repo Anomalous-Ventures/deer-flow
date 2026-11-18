@@ -286,6 +286,8 @@ Proxied through nginx: `/api/langgraph/*` → Gateway LangGraph-compatible runti
 
 ### MCP System (`packages/harness/deerflow/mcp/`)
 
+For HTTP MCP integrations, configure the final endpoint URL and verify rejection of redirects to other origins. Keep custom `outputSchema` references within their schema document. The harness configures clients; SDK server audience checks belong to the server's authentication configuration. `tests/test_mcp_transport_security_contract.py` exercises these client guards and bounded session cleanup on owned loopback endpoints.
+
 - Uses `langchain-mcp-adapters` `MultiServerMCPClient` for multi-server management
 - **Lazy initialization**: Tools loaded on first use via `get_cached_mcp_tools()`
 - **Cache invalidation**: Detects config file changes via mtime comparison
