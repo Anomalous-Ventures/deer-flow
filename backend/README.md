@@ -273,6 +273,8 @@ Provider note:
 
 MCP servers and skill states in a single file:
 
+Configure HTTP/SSE servers with their final endpoint URL so clients do not depend on redirects. Keep custom references in a tool's `outputSchema` inside that schema document.
+
 ```json
 {
   "mcpServers": {
